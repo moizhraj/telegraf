@@ -1,5 +1,5 @@
 name: ACR Build Release
- 
+
 on:
   workflow_dispatch:
     inputs:
@@ -7,12 +7,12 @@ on:
         description: 'Environment Type'
         type: environment
         required: true
- 
+
 jobs:
   docker_build:
     name: 'Docker Build and Push to ACR'
     runs-on: ubuntu-latest
-    environment: production
+    environment: development
   
     # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
     defaults:
@@ -24,13 +24,6 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
   
-    - name: 'ACR Login'
-      uses: azure/docker-login@v1
-      with:
-        login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
-        username: ${{ secrets.REGISTRY_USERNAME }}
-        password: ${{ secrets.REGISTRY_PASSWORD }}
-
     - name: Create Datetime Tag
       run: echo "NOW=$(date +'%Y%m%d%H%M')" >> $GITHUB_ENV
     
@@ -55,7 +48,7 @@ jobs:
   dev_publish:
     name: 'Push to Dev ACR'
     runs-on: ubuntu-latest
-    environment: 'Development'
+    environment: 'development'
     permissions:
       contents: none
     needs: docker_build
@@ -82,7 +75,7 @@ jobs:
   prod_publish:
     name: 'Push to Prod ACR'
     runs-on: ubuntu-latest
-    environment: 'Production'
+    environment: 'production'
     permissions:
       contents: none
     needs: dev_publish
