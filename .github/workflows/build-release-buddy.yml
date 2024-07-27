@@ -24,3 +24,10 @@ jobs:
 
     - name: Echo Now variable
       run: echo $NOW
+
+    - name: Build the telegraf image and push it to ACR
+      uses: docker/build-push-action@v5
+      with:
+        push: false
+        tags: ${{ secrets.REGISTRY_LOGIN_SERVER }}/master:$NOW
+        file: scripts/ci.docker
