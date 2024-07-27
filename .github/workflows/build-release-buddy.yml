@@ -55,7 +55,7 @@ jobs:
   dev_publish:
     name: 'Push to Dev ACR'
     runs-on: ubuntu-latest
-    environment: 'Development'
+    environment: 'development'
     permissions:
       contents: none
     needs: docker_build
@@ -82,7 +82,7 @@ jobs:
   prod_publish:
     name: 'Push to Prod ACR'
     runs-on: ubuntu-latest
-    environment: 'Production'
+    environment: 'production'
     permissions:
       contents: none
     needs: dev_publish
