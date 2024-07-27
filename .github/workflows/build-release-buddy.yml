@@ -66,6 +66,7 @@ jobs:
       - name: Load telegraf image
         run: |
           docker load --input /tmp/telegraf-image.tar
+          docker image tag ${{ secrets.REGISTRY_LOGIN_SERVER }}/telegraf ${{ secrets.REGISTRY_LOGIN_SERVER }}/telegraf:master-${{ needs.docker_build.outputs.dt-now }}
           docker image ls -a
           
       - name: 'ACR Login'
