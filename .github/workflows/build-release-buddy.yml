@@ -42,7 +42,7 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-artifact@v2
       with:
-        name: app
+        name: telegraf-image
         path: /tmp/telegraf-image.tar
   
   dev_publish:
@@ -62,7 +62,7 @@ jobs:
       
       - name: Load Docker image
         run: |
-          docker load --input /tmp/myimage.tar
+          docker load --input /tmp/telegraf-image.tar
           docker image ls -a
 
       - name: Push to Dev ACR
@@ -89,7 +89,7 @@ jobs:
       
       - name: Load Docker image
         run: |
-          docker load --input /tmp/myimage.tar
+          docker load --input /tmp/telegraf-image.tar
           docker image ls -a
 
       - name: Push to Prod ACR
