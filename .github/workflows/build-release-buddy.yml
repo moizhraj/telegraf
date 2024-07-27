@@ -6,7 +6,7 @@ on:
 jobs:
   docker_build_push_acr:
     name: 'Docker Build and Push to ACR'
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     environment: production
   
     # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
@@ -24,6 +24,10 @@ jobs:
 
     - name: Echo Now variable
       run: echo $NOW
+
+    - name: Set up Docker Buildx
+      id: buildx
+      uses: docker/setup-buildx-action@v3
 
     - name: Build the telegraf image and push it to ACR
       uses: docker/build-push-action@v5
