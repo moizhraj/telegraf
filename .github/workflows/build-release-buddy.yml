@@ -38,7 +38,7 @@ jobs:
       uses: docker/build-push-action@v6
       with:
         push: false
-        tags: ${{ secrets.REGISTRY_LOGIN_SERVER }}/telegraf:master-${{ env.NOW }}
+        tags: ${{ secrets.REGISTRY_LOGIN_SERVER }}/telegraf
         file: scripts/ci.docker
         outputs: type=docker,dest=/tmp/telegraf-image.tar
 
