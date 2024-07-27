@@ -10,7 +10,7 @@ on:
 
 jobs:
   docker_build:
-    name: 'Docker Build and Push to ACR'
+    name: 'Build Telegraf'
     runs-on: ubuntu-latest
     environment: development
   
@@ -46,7 +46,7 @@ jobs:
         path: /tmp/telegraf-image.tar
   
   dev_publish:
-    name: 'Push to Dev ACR'
+    name: 'Publish Dev ACR'
     runs-on: ubuntu-latest
     environment: 'development'
     permissions:
@@ -65,15 +65,12 @@ jobs:
           docker load --input /tmp/telegraf-image.tar
           docker image ls -a
 
-      - name: Push to Dev ACR
-        uses: docker/build-push-action@v5
-        with:
-          push: false
-          tags: ${{ secrets.REGISTRY_LOGIN_SERVER }}/telegraf:master-${{ env.NOW }}
-          file: scripts/ci.docker
+      - name: Push Dev
+        run: |
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/telegraf:master-${{ env.NOW }}
 
   prod_publish:
-    name: 'Push to Prod ACR'
+    name: 'Publish Prod ACR'
     runs-on: ubuntu-latest
     environment: 'production'
     permissions:
@@ -92,9 +89,6 @@ jobs:
           docker load --input /tmp/telegraf-image.tar
           docker image ls -a
 
-      - name: Push to Prod ACR
-        uses: docker/build-push-action@v5
-        with:
-          push: false
-          tags: ${{ secrets.REGISTRY_LOGIN_SERVER }}/telegraf:master-${{ env.NOW }}
-          file: scripts/ci.docker
+      - name: Push Dev
+        run: |
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/telegraf:master-${{ env.NOW }}
