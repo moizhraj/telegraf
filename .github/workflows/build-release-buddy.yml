@@ -13,6 +13,8 @@ jobs:
     name: 'Build Telegraf'
     runs-on: ubuntu-latest
     environment: development
+    outputs:
+      dt-now: ${{ steps.dt-now.outputs.NOW }}
   
     # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
     defaults:
@@ -25,7 +27,8 @@ jobs:
       uses: actions/checkout@v4
   
     - name: Create Datetime Tag
-      run: echo "NOW=$(date +'%Y%m%d%H%M')" >> $GITHUB_ENV
+      id: dt-now
+      run: echo "NOW=$(date +'%Y%m%d%H%M')" >> $GITHUB_ENV >> $GITHUB_OUTPUT
     
     - name: Set up Docker Buildx
       id: buildx
@@ -62,7 +65,7 @@ jobs:
 
       - name: Import Image
         run: |
-          docker import /tmp/telegraf-image.tar ${{ secrets.REGISTRY_LOGIN_SERVER }}/telegraf:master-${{ env.NOW }}
+          docker import /tmp/telegraf-image.tar ${{ secrets.REGISTRY_LOGIN_SERVER }}/telegraf:master-${{ needs.docker_build.outputs.dt-now }}
           docker image ls -a
           
       - name: 'ACR Login'
@@ -74,7 +77,7 @@ jobs:
         
       - name: Push Dev
         run: |
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/telegraf:master-${{ env.NOW }}
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/telegraf:master-${{ needs.docker_build.outputs.dt-now }}
 
   prod_publish:
     name: 'Publish Prod ACR'
@@ -82,7 +85,7 @@ jobs:
     environment: 'production'
     permissions:
       contents: none
-    needs: dev_publish
+    needs: [docker_build, dev_publish]
 
     steps:
       - name: Download artifacts (Docker images) from previous workflows
@@ -93,7 +96,7 @@ jobs:
       
       - name: Import Image
         run: |
-          docker import /tmp/telegraf-image.tar ${{ secrets.REGISTRY_LOGIN_SERVER }}/telegraf:master-${{ env.NOW }}
+          docker import /tmp/telegraf-image.tar ${{ secrets.REGISTRY_LOGIN_SERVER }}/telegraf:master-${{ needs.docker_build.outputs.dt-now }}
           docker image ls -a
 
       - name: 'ACR Login'
@@ -105,4 +108,4 @@ jobs:
 
       - name: Push Dev
         run: |
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/telegraf:master-${{ env.NOW }}
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/telegraf:master-${{ needs.docker_build.outputs.dt-now }}
