@@ -63,10 +63,6 @@ jobs:
       - name: Import Image
         run: |
           docker import /tmp/telegraf-image.tar ${{ secrets.REGISTRY_LOGIN_SERVER }}/telegraf:master-${{ env.NOW }}
-      
-      - name: Load Docker image
-        run: |
-          docker load --input /tmp/telegraf-image.tar
           docker image ls -a
           
       - name: 'ACR Login'
@@ -95,9 +91,9 @@ jobs:
           name: telegraf-image
           path: /tmp
       
-      - name: Load Docker image
+      - name: Import Image
         run: |
-          docker load --input /tmp/telegraf-image.tar
+          docker import /tmp/telegraf-image.tar ${{ secrets.REGISTRY_LOGIN_SERVER }}/telegraf:master-${{ env.NOW }}
           docker image ls -a
 
       - name: 'ACR Login'
