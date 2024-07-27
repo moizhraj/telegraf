@@ -59,6 +59,10 @@ jobs:
         with:
           name: telegraf-image
           path: /tmp
+
+      - name: Import Image
+        run: |
+          docker import /tmp/telegraf-image.tar ${{ secrets.REGISTRY_LOGIN_SERVER }}/telegraf:master-${{ env.NOW }}
       
       - name: Load Docker image
         run: |
