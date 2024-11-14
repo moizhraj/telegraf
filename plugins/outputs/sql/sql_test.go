@@ -135,7 +135,7 @@ var (
 			},
 			ts,
 		),
-		stableMetric( //test spaces in metric, tag, and field names
+		stableMetric( // test spaces in metric, tag, and field names
 			"metric three",
 			[]telegraf.Tag{
 				{
@@ -192,7 +192,7 @@ func TestMysqlIntegration(t *testing.T) {
 	require.NoError(t, err, "failed to start container")
 	defer container.Terminate()
 
-	//use the plugin to write to the database
+	// use the plugin to write to the database
 	address := fmt.Sprintf("%v:%v@tcp(%v:%v)/%v",
 		username, password, container.Address, container.Ports[servicePort], dbname,
 	)
@@ -275,7 +275,7 @@ func TestPostgresIntegration(t *testing.T) {
 	require.NoError(t, err, "failed to start container")
 	defer container.Terminate()
 
-	//use the plugin to write to the database
+	// use the plugin to write to the database
 	// host, port, username, password, dbname
 	address := fmt.Sprintf("postgres://%v:%v@%v:%v/%v",
 		username, password, container.Address, container.Ports[servicePort], dbname,
@@ -289,9 +289,11 @@ func TestPostgresIntegration(t *testing.T) {
 	p.Convert.ConversionStyle = "literal"
 
 	require.NoError(t, p.Connect())
+	defer p.Close()
 	require.NoError(t, p.Write(
 		testMetrics,
 	))
+	require.NoError(t, p.Close())
 
 	expected, err := os.ReadFile("./testdata/postgres/expected.sql")
 	require.NoError(t, err)
@@ -302,17 +304,17 @@ func TestPostgresIntegration(t *testing.T) {
 			"-c",
 			"pg_dump" +
 				" --username=" + username +
-				//" --password=" + password +
+				// " --password=" + password +
 				//			" --compact --skip-opt " +
 				" --no-comments" +
-				//" --data-only" +
+				// " --data-only" +
 				" " + dbname +
 				// pg_dump's output has comments that include build info
 				// of postgres and pg_dump. The build info changes with
 				// each release. To prevent these changes from causing the
 				// test to fail, we strip out comments. Also strip out
 				// blank lines.
-				"|grep -E -v '(^--|^$)'",
+				"|grep -E -v '(^--|^$|^SET )'",
 		})
 		require.NoError(t, err)
 		require.Equal(t, 0, rc)
@@ -358,7 +360,7 @@ func TestClickHouseIntegration(t *testing.T) {
 	require.NoError(t, err, "failed to start container")
 	defer container.Terminate()
 
-	//use the plugin to write to the database
+	// use the plugin to write to the database
 	// host, port, username, password, dbname
 	address := fmt.Sprintf("tcp://%v:%v?username=%v&database=%v",
 		container.Address, container.Ports[servicePort], username, dbname)

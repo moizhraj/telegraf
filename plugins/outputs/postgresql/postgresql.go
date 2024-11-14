@@ -51,6 +51,7 @@ type Postgresql struct {
 	Uint64Type                 string                  `toml:"uint64_type"`
 	RetryMaxBackoff            config.Duration         `toml:"retry_max_backoff"`
 	TagCacheSize               int                     `toml:"tag_cache_size"`
+	ColumnNameLenLimit         int                     `toml:"column_name_length_limit"`
 	LogLevel                   string                  `toml:"log_level"`
 	Logger                     telegraf.Logger         `toml:"-"`
 
@@ -336,7 +337,7 @@ func isTempError(err error) bool {
 		errClass := pgErr.Code[:2]
 		switch errClass {
 		case "23": // Integrity Constraint Violation
-			//23505 - unique_violation
+			// 23505 - unique_violation
 			if pgErr.Code == "23505" && strings.Contains(err.Error(), "pg_type_typname_nsp_index") {
 				// Happens when you try to create 2 tables simultaneously.
 				return true

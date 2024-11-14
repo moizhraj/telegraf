@@ -32,10 +32,11 @@ import (
 	"github.com/influxdata/telegraf/plugins/parsers"
 	_ "github.com/influxdata/telegraf/plugins/parsers/all" // Blank import to have all parsers for testing
 	"github.com/influxdata/telegraf/plugins/parsers/json"
+	"github.com/influxdata/telegraf/plugins/parsers/json_v2"
 	"github.com/influxdata/telegraf/plugins/processors"
 	"github.com/influxdata/telegraf/plugins/serializers"
 	_ "github.com/influxdata/telegraf/plugins/serializers/all" // Blank import to have all serializers for testing
-	promserializer "github.com/influxdata/telegraf/plugins/serializers/prometheus"
+	serializers_prometheus "github.com/influxdata/telegraf/plugins/serializers/prometheus"
 	"github.com/influxdata/telegraf/testutil"
 )
 
@@ -58,7 +59,7 @@ func TestReadBinaryFile(t *testing.T) {
 	cmd.Stderr = &errb
 	err = cmd.Run()
 
-	require.NoError(t, err, fmt.Sprintf("stdout: %s, stderr: %s", outb.String(), errb.String()))
+	require.NoErrorf(t, err, "stdout: %s, stderr: %s", outb.String(), errb.String())
 	c := config.NewConfig()
 	err = c.LoadConfig(binaryFile)
 	require.Error(t, err)
@@ -478,8 +479,6 @@ func TestConfig_InlineTables(t *testing.T) {
 }
 
 func TestConfig_SliceComment(t *testing.T) {
-	t.Skipf("Skipping until #3642 is resolved")
-
 	c := config.NewConfig()
 	require.NoError(t, c.LoadConfig("./testdata/slice_comment.toml"))
 	require.Len(t, c.Outputs, 1)
@@ -519,8 +518,11 @@ func TestConfig_AzureMonitorNamespacePrefix(t *testing.T) {
 func TestGetDefaultConfigPathFromEnvURL(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, err := w.Write([]byte("[agent]\ndebug = true"))
-		require.NoError(t, err)
+		if _, err := w.Write([]byte("[agent]\ndebug = true")); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			t.Error(err)
+			return
+		}
 	}))
 	defer ts.Close()
 
@@ -686,7 +688,7 @@ func TestConfig_SerializerInterfaceNewFormat(t *testing.T) {
 		// Ignore all unexported fields and fields not relevant for functionality
 		options := []cmp.Option{
 			cmpopts.IgnoreUnexported(stype),
-			cmpopts.IgnoreUnexported(reflect.Indirect(reflect.ValueOf(promserializer.MetricTypes{})).Interface()),
+			cmpopts.IgnoreUnexported(reflect.Indirect(reflect.ValueOf(serializers_prometheus.MetricTypes{})).Interface()),
 			cmpopts.IgnoreTypes(sync.Mutex{}, regexp.Regexp{}),
 			cmpopts.IgnoreInterfaces(struct{ telegraf.Logger }{}),
 		}
@@ -778,7 +780,7 @@ func TestConfig_SerializerInterfaceOldFormat(t *testing.T) {
 		// Ignore all unexported fields and fields not relevant for functionality
 		options := []cmp.Option{
 			cmpopts.IgnoreUnexported(stype),
-			cmpopts.IgnoreUnexported(reflect.Indirect(reflect.ValueOf(promserializer.MetricTypes{})).Interface()),
+			cmpopts.IgnoreUnexported(reflect.Indirect(reflect.ValueOf(serializers_prometheus.MetricTypes{})).Interface()),
 			cmpopts.IgnoreTypes(sync.Mutex{}, regexp.Regexp{}),
 			cmpopts.IgnoreInterfaces(struct{ telegraf.Logger }{}),
 		}
@@ -831,6 +833,18 @@ func TestConfig_ParserInterface(t *testing.T) {
 			param: map[string]interface{}{
 				"ProtobufMessageDef":  "testdata/addressbook.proto",
 				"ProtobufMessageType": "addressbook.AddressBook",
+			},
+		},
+		"json_v2": {
+			param: map[string]interface{}{
+				"Configs": []json_v2.Config{{
+					Fields: []json_v2.DataSet{{
+						Path:     "",
+						Type:     "int",
+						Rename:   "",
+						Optional: false,
+					}},
+				}},
 			},
 		},
 	}
@@ -1037,6 +1051,18 @@ func TestConfig_ProcessorsWithParsers(t *testing.T) {
 			param: map[string]interface{}{
 				"ProtobufMessageDef":  "testdata/addressbook.proto",
 				"ProtobufMessageType": "addressbook.AddressBook",
+			},
+		},
+		"json_v2": {
+			param: map[string]interface{}{
+				"Configs": []json_v2.Config{{
+					Fields: []json_v2.DataSet{{
+						Path:     "",
+						Type:     "int",
+						Rename:   "",
+						Optional: false,
+					}},
+				}},
 			},
 		},
 	}
@@ -1267,7 +1293,7 @@ func TestPersisterProcessorRegistration(t *testing.T) {
 	}
 }
 
-/*** Mockup INPUT plugin for (new) parser testing to avoid cyclic dependencies ***/
+// Mockup INPUT plugin for (new) parser testing to avoid cyclic dependencies
 type MockupInputPluginParserNew struct {
 	Parser     telegraf.Parser
 	ParserFunc telegraf.ParserFunc
@@ -1286,7 +1312,7 @@ func (m *MockupInputPluginParserNew) SetParserFunc(f telegraf.ParserFunc) {
 	m.ParserFunc = f
 }
 
-/*** Mockup INPUT plugin for testing to avoid cyclic dependencies ***/
+// Mockup INPUT plugin for testing to avoid cyclic dependencies
 type MockupInputPlugin struct {
 	Servers      []string        `toml:"servers"`
 	Methods      []string        `toml:"methods"`
@@ -1316,7 +1342,7 @@ func (m *MockupInputPlugin) SetParser(parser telegraf.Parser) {
 	m.parser = parser
 }
 
-/*** Mockup INPUT plugin with ParserFunc interface ***/
+// Mockup INPUT plugin with ParserFunc interface
 type MockupInputPluginParserFunc struct {
 	parserFunc telegraf.ParserFunc
 }
@@ -1331,7 +1357,7 @@ func (m *MockupInputPluginParserFunc) SetParserFunc(pf telegraf.ParserFunc) {
 	m.parserFunc = pf
 }
 
-/*** Mockup INPUT plugin without ParserFunc interface ***/
+// Mockup INPUT plugin without ParserFunc interface
 type MockupInputPluginParserOnly struct {
 	parser telegraf.Parser
 }
@@ -1346,7 +1372,7 @@ func (m *MockupInputPluginParserOnly) SetParser(p telegraf.Parser) {
 	m.parser = p
 }
 
-/*** Mockup PROCESSOR plugin for testing to avoid cyclic dependencies ***/
+// Mockup PROCESSOR plugin for testing to avoid cyclic dependencies
 type MockupProcessorPluginParser struct {
 	Parser     telegraf.Parser
 	ParserFunc telegraf.ParserFunc
@@ -1373,7 +1399,7 @@ func (m *MockupProcessorPluginParser) SetParserFunc(f telegraf.ParserFunc) {
 	m.ParserFunc = f
 }
 
-/*** Mockup PROCESSOR plugin without parser ***/
+// Mockup PROCESSOR plugin without parser
 type MockupProcessorPlugin struct {
 	Option string `toml:"option"`
 	state  []uint64
@@ -1408,7 +1434,7 @@ func (m *MockupProcessorPlugin) SetState(state interface{}) error {
 	return nil
 }
 
-/*** Mockup PROCESSOR plugin with parser ***/
+// Mockup PROCESSOR plugin with parser
 type MockupProcessorPluginParserOnly struct {
 	Parser telegraf.Parser
 }
@@ -1431,7 +1457,7 @@ func (m *MockupProcessorPluginParserOnly) SetParser(parser telegraf.Parser) {
 	m.Parser = parser
 }
 
-/*** Mockup PROCESSOR plugin with parser-function ***/
+// Mockup PROCESSOR plugin with parser-function
 type MockupProcessorPluginParserFunc struct {
 	Parser telegraf.ParserFunc
 }
@@ -1454,7 +1480,7 @@ func (m *MockupProcessorPluginParserFunc) SetParserFunc(pf telegraf.ParserFunc) 
 	m.Parser = pf
 }
 
-/*** Mockup OUTPUT plugin for testing to avoid cyclic dependencies ***/
+// Mockup OUTPUT plugin for testing to avoid cyclic dependencies
 type MockupOutputPlugin struct {
 	URL             string            `toml:"url"`
 	Headers         map[string]string `toml:"headers"`
@@ -1477,7 +1503,7 @@ func (m *MockupOutputPlugin) Write(_ []telegraf.Metric) error {
 	return nil
 }
 
-/*** Mockup OUTPUT plugin for serializer testing to avoid cyclic dependencies ***/
+// Mockup OUTPUT plugin for serializer testing to avoid cyclic dependencies
 type MockupOutputPluginSerializerOld struct {
 	Serializer serializers.Serializer
 }
@@ -1518,7 +1544,7 @@ func (*MockupOutputPluginSerializerNew) Write(_ []telegraf.Metric) error {
 	return nil
 }
 
-/*** Mockup INPUT plugin with state for testing to avoid cyclic dependencies ***/
+// Mockup INPUT plugin with state for testing to avoid cyclic dependencies
 type MockupState struct {
 	Name     string
 	Version  uint64
@@ -1550,7 +1576,6 @@ func (m *MockupStatePlugin) Init() error {
 	}
 	m.state = MockupState{
 		Name:     "mockup",
-		Bits:     []int{},
 		Modified: t0,
 	}
 

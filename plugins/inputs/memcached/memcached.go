@@ -15,7 +15,7 @@ import (
 	"golang.org/x/net/proxy"
 
 	"github.com/influxdata/telegraf"
-	tlsint "github.com/influxdata/telegraf/plugins/common/tls"
+	common_tls "github.com/influxdata/telegraf/plugins/common/tls"
 	"github.com/influxdata/telegraf/plugins/inputs"
 )
 
@@ -27,7 +27,7 @@ type Memcached struct {
 	Servers     []string `toml:"servers"`
 	UnixSockets []string `toml:"unix_sockets"`
 	EnableTLS   bool     `toml:"enable_tls"`
-	tlsint.ClientConfig
+	common_tls.ClientConfig
 }
 
 var defaultTimeout = 5 * time.Second
@@ -59,6 +59,27 @@ var sendMetrics = []string{
 	"evicted_unfetched",
 	"evictions",
 	"expired_unfetched",
+	"extstore_compact_lost",
+	"extstore_compact_rescues",
+	"extstore_compact_resc_cold",
+	"extstore_compact_resc_old",
+	"extstore_compact_skipped",
+	"extstore_page_allocs",
+	"extstore_page_evictions",
+	"extstore_page_reclaims",
+	"extstore_pages_free",
+	"extstore_pages_used",
+	"extstore_objects_evicted",
+	"extstore_objects_read",
+	"extstore_objects_written",
+	"extstore_objects_used",
+	"extstore_bytes_evicted",
+	"extstore_bytes_written",
+	"extstore_bytes_read",
+	"extstore_bytes_used",
+	"extstore_bytes_fragmented",
+	"extstore_limit_maxbytes",
+	"extstore_io_queue",
 	"get_expired",
 	"get_flushed",
 	"get_hits",

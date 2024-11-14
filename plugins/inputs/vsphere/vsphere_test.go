@@ -3,7 +3,6 @@ package vsphere
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 	"net/url"
 	"os"
 	"strings"
@@ -17,7 +16,7 @@ import (
 	"github.com/vmware/govmomi/vim25/types"
 
 	"github.com/influxdata/telegraf/config"
-	itls "github.com/influxdata/telegraf/plugins/common/tls"
+	common_tls "github.com/influxdata/telegraf/plugins/common/tls"
 	"github.com/influxdata/telegraf/testutil"
 )
 
@@ -130,7 +129,7 @@ func defaultVSphere() *VSphere {
 		DatacenterMetricInclude:   nil,
 		DatacenterMetricExclude:   nil,
 		DatacenterInclude:         []string{"/**"},
-		ClientConfig:              itls.ClientConfig{InsecureSkipVerify: true},
+		ClientConfig:              common_tls.ClientConfig{InsecureSkipVerify: true},
 
 		MaxQueryObjects:         256,
 		MaxQueryMetrics:         256,
@@ -149,7 +148,7 @@ func createSim(folders int) (*simulator.Model, *simulator.Server, error) {
 
 	model.Folder = folders
 	model.Datacenter = 2
-	//model.App = 1
+	// model.App = 1
 
 	err := model.Create()
 	if err != nil {
@@ -291,19 +290,19 @@ func TestFinder(t *testing.T) {
 	require.Len(t, host, 1)
 	require.Equal(t, "DC0_H0", host[0].Name)
 
-	host = []mo.HostSystem{}
+	host = make([]mo.HostSystem, 0)
 	err = f.Find(ctx, "HostSystem", "/DC0/host/DC0_C0/DC0_C0_H0", &host)
 	require.NoError(t, err)
 	require.Len(t, host, 1)
 	require.Equal(t, "DC0_C0_H0", host[0].Name)
 
-	var resourcepool = []mo.ResourcePool{}
+	resourcepool := make([]mo.ResourcePool, 0)
 	err = f.Find(ctx, "ResourcePool", "/DC0/host/DC0_C0/Resources/DC0_C0_RP0", &resourcepool)
 	require.NoError(t, err)
 	require.Len(t, host, 1)
 	require.Equal(t, "DC0_C0_H0", host[0].Name)
 
-	host = []mo.HostSystem{}
+	host = make([]mo.HostSystem, 0)
 	err = f.Find(ctx, "HostSystem", "/DC0/host/DC0_C0/*", &host)
 	require.NoError(t, err)
 	require.Len(t, host, 3)
@@ -322,8 +321,8 @@ func TestFinder(t *testing.T) {
 	testLookupVM(ctx, t, &f, "/*/host/**/*DC*VM*", 8, "")
 	testLookupVM(ctx, t, &f, "/*/host/**/*DC*/*/*DC*", 4, "")
 
-	vm = []mo.VirtualMachine{}
-	err = f.FindAll(ctx, "VirtualMachine", []string{"/DC0/vm/DC0_H0*", "/DC0/vm/DC0_C0*"}, []string{}, &vm)
+	vm = make([]mo.VirtualMachine, 0)
+	err = f.FindAll(ctx, "VirtualMachine", []string{"/DC0/vm/DC0_H0*", "/DC0/vm/DC0_C0*"}, nil, &vm)
 	require.NoError(t, err)
 	require.Len(t, vm, 4)
 
@@ -333,7 +332,7 @@ func TestFinder(t *testing.T) {
 		excludePaths: []string{"/DC0/vm/DC0_H0_VM0"},
 		resType:      "VirtualMachine",
 	}
-	vm = []mo.VirtualMachine{}
+	vm = make([]mo.VirtualMachine, 0)
 	require.NoError(t, rf.FindAll(ctx, &vm))
 	require.Len(t, vm, 3)
 
@@ -343,7 +342,7 @@ func TestFinder(t *testing.T) {
 		excludePaths: []string{"/**"},
 		resType:      "VirtualMachine",
 	}
-	vm = []mo.VirtualMachine{}
+	vm = make([]mo.VirtualMachine, 0)
 	require.NoError(t, rf.FindAll(ctx, &vm))
 	require.Empty(t, vm)
 
@@ -353,7 +352,7 @@ func TestFinder(t *testing.T) {
 		excludePaths: []string{"/**"},
 		resType:      "VirtualMachine",
 	}
-	vm = []mo.VirtualMachine{}
+	vm = make([]mo.VirtualMachine, 0)
 	require.NoError(t, rf.FindAll(ctx, &vm))
 	require.Empty(t, vm)
 
@@ -363,7 +362,7 @@ func TestFinder(t *testing.T) {
 		excludePaths: []string{"/this won't match anything"},
 		resType:      "VirtualMachine",
 	}
-	vm = []mo.VirtualMachine{}
+	vm = make([]mo.VirtualMachine, 0)
 	require.NoError(t, rf.FindAll(ctx, &vm))
 	require.Len(t, vm, 8)
 
@@ -373,7 +372,7 @@ func TestFinder(t *testing.T) {
 		excludePaths: []string{"/**/*VM0"},
 		resType:      "VirtualMachine",
 	}
-	vm = []mo.VirtualMachine{}
+	vm = make([]mo.VirtualMachine, 0)
 	require.NoError(t, rf.FindAll(ctx, &vm))
 	require.Len(t, vm, 4)
 }
@@ -428,7 +427,7 @@ func TestVsanCmmds(t *testing.T) {
 
 	f := Finder{c}
 	var clusters []mo.ClusterComputeResource
-	err = f.FindAll(ctx, "ClusterComputeResource", []string{"/**"}, []string{}, &clusters)
+	err = f.FindAll(ctx, "ClusterComputeResource", []string{"/**"}, nil, &clusters)
 	require.NoError(t, err)
 
 	clusterObj := object.NewClusterComputeResource(c.Client.Client, clusters[0].Reference())
@@ -440,13 +439,15 @@ func TestVsanTags(t *testing.T) {
 	host := "5b860329-3bc4-a76c-48b6-246e963cfcc0"
 	disk := "52ee3be1-47cc-b50d-ecab-01af0f706381"
 	ssdDisk := "52f26fc8-0b9b-56d8-3a32-a9c3bfbc6148"
+	nvmeDisk := "5291e74f-74d3-fca2-6ffa-3655657dd3be"
 	ssd := "52173131-3384-bb63-4ef8-c00b0ce7e3e7"
 	hostname := "sc2-hs1-b2801.eng.vmware.com"
 	devName := "naa.55cd2e414d82c815:2"
 	var cmmds = map[string]CmmdsEntity{
-		disk:    {UUID: disk, Type: "DISK", Owner: host, Content: CmmdsContent{DevName: devName, IsSsd: 1.}},
-		ssdDisk: {UUID: ssdDisk, Type: "DISK", Owner: host, Content: CmmdsContent{DevName: devName, IsSsd: 0., SsdUUID: ssd}},
-		host:    {UUID: host, Type: "HOSTNAME", Owner: host, Content: CmmdsContent{Hostname: hostname}},
+		nvmeDisk: {UUID: nvmeDisk, Type: "DISK_CAPACITY_TIER", Owner: host, Content: CmmdsContent{DevName: devName}},
+		disk:     {UUID: disk, Type: "DISK", Owner: host, Content: CmmdsContent{DevName: devName, IsSsd: 1.}},
+		ssdDisk:  {UUID: ssdDisk, Type: "DISK", Owner: host, Content: CmmdsContent{DevName: devName, IsSsd: 0., SsdUUID: ssd}},
+		host:     {UUID: host, Type: "HOSTNAME", Owner: host, Content: CmmdsContent{Hostname: hostname}},
 	}
 	tags := populateCMMDSTags(make(map[string]string), "capacity-disk", disk, cmmds)
 	require.Len(t, tags, 2)
@@ -454,6 +455,8 @@ func TestVsanTags(t *testing.T) {
 	require.Len(t, tags, 3)
 	tags = populateCMMDSTags(make(map[string]string), "host-domclient", host, cmmds)
 	require.Len(t, tags, 1)
+	tags = populateCMMDSTags(make(map[string]string), "vsan-esa-disk-layer", nvmeDisk, cmmds)
+	require.Len(t, tags, 2)
 }
 
 func TestCollectionNoClusterMetrics(t *testing.T) {
@@ -514,7 +517,7 @@ func testCollection(t *testing.T, excludeClusters bool) {
 	require.NoError(t, v.Start(&acc))
 	defer v.Stop()
 	require.NoError(t, v.Gather(&acc))
-	require.Empty(t, acc.Errors, fmt.Sprintf("Errors found: %s", acc.Errors))
+	require.Emptyf(t, acc.Errors, "Errors found: %s", acc.Errors)
 	require.NotEmpty(t, acc.Metrics, "No metrics were collected")
 	cache := make(map[string]string)
 	client, err := v.endpoints[0].clientFactory.GetClient(context.Background())
@@ -617,6 +620,6 @@ func TestVersionLowerThan(t *testing.T) {
 	}
 	for _, tc := range tests {
 		result := versionLowerThan(tc.current, tc.major, tc.minor)
-		require.Equal(t, tc.result, result, fmt.Sprintf("%s < %d.%d", tc.current, tc.major, tc.minor))
+		require.Equalf(t, tc.result, result, "%s < %d.%d", tc.current, tc.major, tc.minor)
 	}
 }

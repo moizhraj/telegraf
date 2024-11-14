@@ -20,7 +20,8 @@ To generate a file with specific inputs and outputs, you can use the
 telegraf config --input-filter cpu:mem:net:swap --output-filter influxdb:kafka
 ```
 
-[View the full list][flags] of Telegraf commands and flags or by running `telegraf --help`.
+[View the full list][flags] of Telegraf commands and flags or by running
+`telegraf --help`.
 
 ### Windows PowerShell v5 Encoding
 
@@ -64,14 +65,18 @@ If using an environment variable with a single backslash, then enclose the
 variable in single quotes which signifies a string literal (e.g.
 `'C:\Program Files'`).
 
-In addition to this, Telegraf also supports Shell parameter expansion for environment variables
-which allows syntax such as:
+In addition to this, Telegraf also supports Shell parameter expansion for
+environment variables which allows syntax such as:
 
-- `${VARIABLE:-default}` evaluates to default if VARIABLE is unset or empty in the environment.
-- `${VARIABLE-default}` evaluates to default only if VARIABLE is unset in the environment.
-Similarly, the following syntax allows you to specify mandatory variables:
-- `${VARIABLE:?err}` exits with an error message containing err if VARIABLE is unset or empty in the environment.
-- `${VARIABLE?err}` exits with an error message containing err if VARIABLE is unset in the environment.
+- `${VARIABLE:-default}` evaluates to default if VARIABLE is unset or empty in
+                         the environment.
+- `${VARIABLE-default}` evaluates to default only if VARIABLE is unset in the
+                        environment. Similarly, the following syntax allows you
+                        to specify mandatory variables:
+- `${VARIABLE:?err}` exits with an error message containing err if VARIABLE is
+                     unset or empty in the environment.
+- `${VARIABLE?err}` exits with an error message containing err if VARIABLE is
+                     unset in the environment.
 
 When using the `.deb` or `.rpm` packages, you can define environment variables
 in the `/etc/default/telegraf` file.
@@ -261,7 +266,8 @@ The agent table configures Telegraf and the defaults used across all plugins.
 - **metric_buffer_limit**:
   Maximum number of unwritten metrics per output.  Increasing this value
   allows for longer periods of output downtime without dropping metrics at the
-  cost of higher maximum memory usage.
+  cost of higher maximum memory usage. Oldest metrics are overwritten in favor
+  of new ones when the buffer fills up.
 
 - **collection_jitter**:
   Collection jitter is used to jitter the collection by a random [interval][].
@@ -296,14 +302,14 @@ The agent table configures Telegraf and the defaults used across all plugins.
 - **quiet**:
   Log only error level messages.
 
-- **logtarget**:
-  Log target controls the destination for logs and can be one of "file",
-  "stderr" or, on Windows, "eventlog".  When set to "file", the output file is
-  determined by the "logfile" setting.
+- **logformat**:
+  Log format controls the way messages are logged and can be one of "text",
+  "structured" or, on Windows, "eventlog". The output file (if any) is
+  determined by the `logfile` setting.
 
 - **logfile**:
-  Name of the file to be logged to when using the "file" logtarget.  If set to
-  the empty string then logs are written to stderr.
+  Name of the file to be logged to or stderr if unset or empty. This
+  setting is ignored for the "eventlog" format.
 
 - **logfile_rotation_interval**:
   The logfile will be rotated after the time interval specified.  When set to
@@ -356,7 +362,12 @@ The agent table configures Telegraf and the defaults used across all plugins.
   The type of buffer to use for telegraf output plugins. Supported modes are
   `memory`, the default and original buffer type, and `disk`, an experimental
   disk-backed buffer which will serialize all metrics to disk as needed to
-  improve data durability and reduce the chance for data loss.
+  improve data durability and reduce the chance for data loss. This is only
+  supported at the agent level.
+
+- **buffer_directory**:
+  The directory to use when in `disk` buffer mode. Each output plugin will make
+  another subdirectory in this directory with the output plugin's ID.
 
 ## Plugins
 
@@ -380,38 +391,40 @@ driven operation.
 Parameters that can be used with any input plugin:
 
 - **alias**: Name an instance of a plugin.
-
 - **interval**:
   Overrides the `interval` setting of the [agent][Agent] for the plugin.  How
   often to gather this metric. Normal plugins use a single global interval, but
   if one particular input should be run less or more often, you can configure
   that here.
-
 - **precision**:
   Overrides the `precision` setting of the [agent][Agent] for the plugin.
   Collected metrics are rounded to the precision specified as an [interval][].
 
   When this value is set on a service input, multiple events occurring at the
   same timestamp may be merged by the output database.
+- **time_source**:
+  Specifies the source of the timestamp on metrics. Possible values are:
+  - `metric` will not alter the metric (default)
+  - `collection_start` sets the timestamp to when collection started
+  - `collection_end` set the timestamp to when collection finished
 
+  `time_source` will NOT be used for service inputs. It is up to each individual
+  service input to set the timestamp.
 - **collection_jitter**:
   Overrides the `collection_jitter` setting of the [agent][Agent] for the
   plugin.  Collection jitter is used to jitter the collection by a random
   [interval][]. The value must be non-zero to override the agent setting.
-
 - **collection_offset**:
   Overrides the `collection_offset` setting of the [agent][Agent] for the
   plugin. Collection offset is used to shift the collection by the given
   [interval][]. The value must be non-zero to override the agent setting.
-
 - **name_override**: Override the base name of the measurement.  (Default is
   the name of the input).
-
 - **name_prefix**: Specifies a prefix to attach to the measurement name.
-
 - **name_suffix**: Specifies a suffix to attach to the measurement name.
-
 - **tags**: A map of tags to apply to a specific input's measurements.
+- **log_level**: Override the log-level for this plugin. Possible values are
+  `error`, `warn`, `info`, `debug` and `trace`.
 
 The [metric filtering][] parameters can be used to limit what metrics are
 emitted from the input plugin.
@@ -497,6 +510,8 @@ Parameters that can be used with any output plugin:
 - **name_override**: Override the original name of the measurement.
 - **name_prefix**: Specifies a prefix to attach to the measurement name.
 - **name_suffix**: Specifies a suffix to attach to the measurement name.
+- **log_level**: Override the log-level for this plugin. Possible values are
+  `error`, `warn`, `info` and `debug`.
 
 The [metric filtering][] parameters can be used to limit what metrics are
 emitted from the output plugin.
@@ -535,6 +550,8 @@ Parameters that can be used with any processor plugin:
   If this is not specified then processor execution order will be the order in
   the config. Processors without "order" will take precedence over those
   with a defined order.
+- **log_level**: Override the log-level for this plugin. Possible values are
+  `error`, `warn`, `info` and `debug`.
 
 The [metric filtering][] parameters can be used to limit what metrics are
 handled by the processor.  Excluded metrics are passed downstream to the next
@@ -587,6 +604,8 @@ Parameters that can be used with any aggregator plugin:
 - **name_prefix**: Specifies a prefix to attach to the measurement name.
 - **name_suffix**: Specifies a suffix to attach to the measurement name.
 - **tags**: A map of tags to apply to the measurement - behavior varies based on aggregator.
+- **log_level**: Override the log-level for this plugin. Possible values are
+  `error`, `warn`, `info` and `debug`.
 
 The [metric filtering][] parameters can be used to limit what metrics are
 handled by the aggregator.  Excluded metrics are passed downstream to the next

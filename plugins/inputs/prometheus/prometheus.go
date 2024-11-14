@@ -25,10 +25,10 @@ import (
 	"github.com/influxdata/telegraf/filter"
 	"github.com/influxdata/telegraf/internal"
 	"github.com/influxdata/telegraf/models"
-	httpconfig "github.com/influxdata/telegraf/plugins/common/http"
+	common_http "github.com/influxdata/telegraf/plugins/common/http"
 	"github.com/influxdata/telegraf/plugins/inputs"
 	"github.com/influxdata/telegraf/plugins/parsers/openmetrics"
-	parser "github.com/influxdata/telegraf/plugins/parsers/prometheus"
+	parsers_prometheus "github.com/influxdata/telegraf/plugins/parsers/prometheus"
 )
 
 //go:embed sample.conf
@@ -50,9 +50,9 @@ type PodID string
 type Prometheus struct {
 	URLs                 []string          `toml:"urls"`
 	BearerToken          string            `toml:"bearer_token"`
-	BearerTokenString    string            `toml:"bearer_token_string"`
-	Username             string            `toml:"username"`
-	Password             string            `toml:"password"`
+	BearerTokenString    config.Secret     `toml:"bearer_token_string"`
+	Username             config.Secret     `toml:"username"`
+	Password             config.Secret     `toml:"password"`
 	HTTPHeaders          map[string]string `toml:"http_headers"`
 	ContentLengthLimit   config.Size       `toml:"content_length_limit"`
 	ContentTypeOverride  string            `toml:"content_type_override"`
@@ -88,7 +88,7 @@ type Prometheus struct {
 	ConsulConfig ConsulConfig `toml:"consul"`
 
 	Log telegraf.Logger `toml:"-"`
-	httpconfig.HTTPClientConfig
+	common_http.HTTPClientConfig
 
 	client      *http.Client
 	headers     map[string]string
@@ -234,7 +234,7 @@ func (p *Prometheus) Init() error {
 		"Accept":     acceptHeader,
 	}
 
-	p.kubernetesPods = map[PodID]URLAndAddress{}
+	p.kubernetesPods = make(map[PodID]URLAndAddress)
 
 	return nil
 }
@@ -377,7 +377,7 @@ func (p *Prometheus) gatherURL(u URLAndAddress, acc telegraf.Accumulator) (map[s
 	var req *http.Request
 	var uClient *http.Client
 	requestFields := make(map[string]interface{})
-	tags := map[string]string{}
+	tags := make(map[string]string, len(u.Tags)+2)
 	if p.URLTag != "" {
 		tags[p.URLTag] = u.OriginalURL.String()
 	}
@@ -432,10 +432,25 @@ func (p *Prometheus) gatherURL(u URLAndAddress, acc telegraf.Accumulator) (map[s
 			return nil, nil, err
 		}
 		req.Header.Set("Authorization", "Bearer "+string(token))
-	} else if p.BearerTokenString != "" {
-		req.Header.Set("Authorization", "Bearer "+p.BearerTokenString)
-	} else if p.Username != "" || p.Password != "" {
-		req.SetBasicAuth(p.Username, p.Password)
+	} else if !p.BearerTokenString.Empty() {
+		token, err := p.BearerTokenString.Get()
+		if err != nil {
+			return nil, nil, fmt.Errorf("getting token secret failed: %w", err)
+		}
+		req.Header.Set("Authorization", "Bearer "+token.String())
+		token.Destroy()
+	} else if !p.Username.Empty() || !p.Password.Empty() {
+		username, err := p.Username.Get()
+		if err != nil {
+			return nil, nil, fmt.Errorf("getting username secret failed: %w", err)
+		}
+		password, err := p.Password.Get()
+		if err != nil {
+			return nil, nil, fmt.Errorf("getting password secret failed: %w", err)
+		}
+		req.SetBasicAuth(username.String(), password.String())
+		username.Destroy()
+		password.Destroy()
 	}
 
 	for key, value := range p.HTTPHeaders {
@@ -510,7 +525,7 @@ func (p *Prometheus) gatherURL(u URLAndAddress, acc telegraf.Accumulator) (map[s
 			Log:             p.Log,
 		}
 	} else {
-		metricParser = &parser.Parser{
+		metricParser = &parsers_prometheus.Parser{
 			Header:          resp.Header,
 			MetricVersion:   p.MetricVersion,
 			IgnoreTimestamp: p.IgnoreTimestamp,
@@ -614,8 +629,8 @@ func (p *Prometheus) Stop() {
 func init() {
 	inputs.Add("prometheus", func() telegraf.Input {
 		return &Prometheus{
-			kubernetesPods: map[PodID]URLAndAddress{},
-			consulServices: map[string]URLAndAddress{},
+			kubernetesPods: make(map[PodID]URLAndAddress),
+			consulServices: make(map[string]URLAndAddress),
 			URLTag:         "url",
 		}
 	})

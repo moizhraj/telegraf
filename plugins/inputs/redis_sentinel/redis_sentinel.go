@@ -77,8 +77,7 @@ func (r *RedisSentinel) Init() error {
 		}
 
 		var address string
-		tags := map[string]string{}
-
+		tags := make(map[string]string, 2)
 		switch u.Scheme {
 		case "tcp":
 			address = u.Host
@@ -328,11 +327,7 @@ func (client *RedisSentinelClient) gatherSentinelStats(acc telegraf.Accumulator,
 }
 
 // converts `sentinel masters <name>` output to tags and fields
-func convertSentinelMastersOutput(
-	globalTags map[string]string,
-	master map[string]string,
-	quorumErr error,
-) (map[string]string, map[string]interface{}, error) {
+func convertSentinelMastersOutput(globalTags, master map[string]string, quorumErr error) (map[string]string, map[string]interface{}, error) {
 	tags := globalTags
 
 	tags["master"] = master["name"]

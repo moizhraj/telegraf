@@ -137,7 +137,7 @@ func (s *SQLServer) initQueries() error {
 			Query{ScriptName: "AzureArcSQLMIPerformanceCounters", Script: sqlAzureArcMIPerformanceCounters, ResultByRow: false}
 		queries["AzureArcSQLMIRequests"] = Query{ScriptName: "AzureArcSQLMIRequests", Script: sqlAzureArcMIRequests, ResultByRow: false}
 		queries["AzureArcSQLMISchedulers"] = Query{ScriptName: "AzureArcSQLMISchedulers", Script: sqlAzureArcMISchedulers, ResultByRow: false}
-	} else if s.DatabaseType == typeSQLServer { //These are still V2 queries and have not been refactored yet.
+	} else if s.DatabaseType == typeSQLServer { // These are still V2 queries and have not been refactored yet.
 		queries["SQLServerPerformanceCounters"] = Query{ScriptName: "SQLServerPerformanceCounters", Script: sqlServerPerformanceCounters, ResultByRow: false}
 		queries["SQLServerWaitStatsCategorized"] = Query{ScriptName: "SQLServerWaitStatsCategorized", Script: sqlServerWaitStatsCategorized, ResultByRow: false}
 		queries["SQLServerDatabaseIO"] = Query{ScriptName: "SQLServerDatabaseIO", Script: sqlServerDatabaseIO, ResultByRow: false}
@@ -390,7 +390,7 @@ func (s *SQLServer) accRow(query Query, acc telegraf.Accumulator, row scanner) e
 
 	// measurement: identified by the header
 	// tags: all other fields of type string
-	tags := map[string]string{}
+	tags := make(map[string]string, len(columnMap)+1)
 	var measurement string
 	for header, val := range columnMap {
 		if str, ok := (*val).(string); ok {

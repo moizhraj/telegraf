@@ -32,10 +32,10 @@ func TestGather(t *testing.T) {
 	require.NoError(t, acc.GatherError(i.Gather))
 	require.EqualValues(t, 262, acc.NFields(), "non-numeric measurements should be ignored")
 
-	conn := NewConnection(i.Servers[0], i.Privilege, i.HexKey)
-	require.EqualValues(t, "USERID", conn.Username)
-	require.EqualValues(t, "lan", conn.Interface)
-	require.EqualValues(t, "1234567F", conn.HexKey)
+	conn := newConnection(i.Servers[0], i.Privilege, i.HexKey)
+	require.EqualValues(t, "USERID", conn.username)
+	require.EqualValues(t, "lan", conn.intf)
+	require.EqualValues(t, "1234567F", conn.hexKey)
 
 	var testsWithServer = []struct {
 		fields map[string]interface{}
@@ -402,16 +402,16 @@ func TestGatherV2(t *testing.T) {
 	require.NoError(t, i.Init())
 	require.NoError(t, acc.GatherError(i.Gather))
 
-	conn := NewConnection(i.Servers[0], i.Privilege, i.HexKey)
-	require.EqualValues(t, "USERID", conn.Username)
-	require.EqualValues(t, "lan", conn.Interface)
-	require.EqualValues(t, "0000000F", conn.HexKey)
+	conn := newConnection(i.Servers[0], i.Privilege, i.HexKey)
+	require.EqualValues(t, "USERID", conn.username)
+	require.EqualValues(t, "lan", conn.intf)
+	require.EqualValues(t, "0000000F", conn.hexKey)
 
 	var testsWithServer = []struct {
 		fields map[string]interface{}
 		tags   map[string]string
 	}{
-		//SEL              | 72h | ns  |  7.1 | No Reading
+		// SEL              | 72h | ns  |  7.1 | No Reading
 		{
 			map[string]interface{}{
 				"value": float64(0),
@@ -444,7 +444,7 @@ func TestGatherV2(t *testing.T) {
 		fields map[string]interface{}
 		tags   map[string]string
 	}{
-		//SEL              | 72h | ns  |  7.1 | No Reading
+		// SEL              | 72h | ns  |  7.1 | No Reading
 		{
 			map[string]interface{}{
 				"value": float64(0),
@@ -456,7 +456,7 @@ func TestGatherV2(t *testing.T) {
 				"status_desc": "no_reading",
 			},
 		},
-		//Intrusion        | 73h | ok  |  7.1 |
+		// Intrusion        | 73h | ok  |  7.1 |
 		{
 			map[string]interface{}{
 				"value": float64(0),
@@ -468,7 +468,7 @@ func TestGatherV2(t *testing.T) {
 				"status_desc": "ok",
 			},
 		},
-		//Fan1             | 30h | ok  |  7.1 | 5040 RPM
+		// Fan1             | 30h | ok  |  7.1 | 5040 RPM
 		{
 			map[string]interface{}{
 				"value": float64(5040),
@@ -480,7 +480,7 @@ func TestGatherV2(t *testing.T) {
 				"unit":        "rpm",
 			},
 		},
-		//Inlet Temp       | 04h | ok  |  7.1 | 25 degrees C
+		// Inlet Temp       | 04h | ok  |  7.1 | 25 degrees C
 		{
 			map[string]interface{}{
 				"value": float64(25),
@@ -492,7 +492,7 @@ func TestGatherV2(t *testing.T) {
 				"unit":        "degrees_c",
 			},
 		},
-		//USB Cable Pres   | 50h | ok  |  7.1 | Connected
+		// USB Cable Pres   | 50h | ok  |  7.1 | Connected
 		{
 			map[string]interface{}{
 				"value": float64(0),
@@ -504,7 +504,7 @@ func TestGatherV2(t *testing.T) {
 				"status_desc": "connected",
 			},
 		},
-		//Current 1        | 6Ah | ok  | 10.1 | 7.20 Amps
+		// Current 1        | 6Ah | ok  | 10.1 | 7.20 Amps
 		{
 			map[string]interface{}{
 				"value": float64(7.2),
@@ -516,7 +516,7 @@ func TestGatherV2(t *testing.T) {
 				"unit":        "amps",
 			},
 		},
-		//Power Supply 1   | 03h | ok  | 10.1 | 110 Watts, Presence detected
+		// Power Supply 1   | 03h | ok  | 10.1 | 110 Watts, Presence detected
 		{
 			map[string]interface{}{
 				"value": float64(110),
@@ -928,9 +928,7 @@ func TestSanitizeIPMICmd(t *testing.T) {
 			},
 		},
 		{
-			name:     "empty args",
-			args:     []string{},
-			expected: []string{},
+			name: "empty args",
 		},
 	}
 	for _, tt := range tests {

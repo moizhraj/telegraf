@@ -58,6 +58,7 @@ type MQTTConsumer struct {
 	PingTimeout            config.Duration      `toml:"ping_timeout"`
 	MaxUndeliveredMessages int                  `toml:"max_undelivered_messages"`
 	PersistentSession      bool                 `toml:"persistent_session"`
+	ClientTrace            bool                 `toml:"client_trace"`
 	ClientID               string               `toml:"client_id"`
 	Log                    telegraf.Logger      `toml:"-"`
 	tls.ClientConfig
@@ -87,6 +88,14 @@ func (m *MQTTConsumer) SetParser(parser telegraf.Parser) {
 	m.parser = parser
 }
 func (m *MQTTConsumer) Init() error {
+	if m.ClientTrace {
+		log := &mqttLogger{m.Log}
+		mqtt.ERROR = log
+		mqtt.CRITICAL = log
+		mqtt.WARN = log
+		mqtt.DEBUG = log
+	}
+
 	if m.PersistentSession && m.ClientID == "" {
 		return errors.New("persistent_session requires client_id")
 	}
@@ -105,7 +114,7 @@ func (m *MQTTConsumer) Init() error {
 		return err
 	}
 	m.opts = opts
-	m.messages = map[telegraf.TrackingID]mqtt.Message{}
+	m.messages = make(map[telegraf.TrackingID]mqtt.Message)
 
 	m.topicParsers = make([]*TopicParser, 0, len(m.TopicParserConfig))
 	for _, cfg := range m.TopicParserConfig {
@@ -116,8 +125,8 @@ func (m *MQTTConsumer) Init() error {
 		m.topicParsers = append(m.topicParsers, p)
 	}
 
-	m.payloadSize = selfstat.Register("mqtt_consumer", "payload_size", map[string]string{})
-	m.messagesRecv = selfstat.Register("mqtt_consumer", "messages_received", map[string]string{})
+	m.payloadSize = selfstat.Register("mqtt_consumer", "payload_size", make(map[string]string))
+	m.messagesRecv = selfstat.Register("mqtt_consumer", "messages_received", make(map[string]string))
 	return nil
 }
 func (m *MQTTConsumer) Start(acc telegraf.Accumulator) error {
@@ -224,7 +233,7 @@ func (m *MQTTConsumer) onMessage(_ mqtt.Client, msg mqtt.Message) {
 	if err != nil || len(metrics) == 0 {
 		if len(metrics) == 0 {
 			once.Do(func() {
-				m.Log.Debug(internal.NoMetricsCreatedMsg)
+				m.Log.Warn(internal.NoMetricsCreatedMsg)
 			})
 		}
 

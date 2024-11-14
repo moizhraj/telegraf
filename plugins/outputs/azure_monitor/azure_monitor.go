@@ -184,7 +184,7 @@ func (a *AzureMonitor) initHTTPClient() {
 }
 
 // vmMetadata retrieves metadata about the current Azure VM
-func vmInstanceMetadata(c *http.Client) (region string, resourceID string, err error) {
+func vmInstanceMetadata(c *http.Client) (region, resourceID string, err error) {
 	req, err := http.NewRequest("GET", vmInstanceMetadataURL, nil)
 	if err != nil {
 		return "", "", fmt.Errorf("error creating request: %w", err)
@@ -380,19 +380,19 @@ func translate(m telegraf.Metric, prefix string) (*azureMonitorMetric, error) {
 		dimensionValues = append(dimensionValues, tag.Value)
 	}
 
-	min, err := getFloatField(m, "min")
+	vmin, err := getFloatField(m, "min")
 	if err != nil {
 		return nil, err
 	}
-	max, err := getFloatField(m, "max")
+	vmax, err := getFloatField(m, "max")
 	if err != nil {
 		return nil, err
 	}
-	sum, err := getFloatField(m, "sum")
+	vsum, err := getFloatField(m, "sum")
 	if err != nil {
 		return nil, err
 	}
-	count, err := getIntField(m, "count")
+	vcount, err := getIntField(m, "count")
 	if err != nil {
 		return nil, err
 	}
@@ -417,10 +417,10 @@ func translate(m telegraf.Metric, prefix string) (*azureMonitorMetric, error) {
 				Series: []*azureMonitorSeries{
 					{
 						DimensionValues: dimensionValues,
-						Min:             min,
-						Max:             max,
-						Sum:             sum,
-						Count:           count,
+						Min:             vmin,
+						Max:             vmax,
+						Sum:             vsum,
+						Count:           vcount,
 					},
 				},
 			},

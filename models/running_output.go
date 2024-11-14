@@ -40,6 +40,8 @@ type OutputConfig struct {
 
 	BufferStrategy  string
 	BufferDirectory string
+
+	LogLevel string
 }
 
 // RunningOutput contains the output configuration
@@ -84,6 +86,9 @@ func NewRunningOutput(
 	logger.RegisterErrorCallback(func() {
 		writeErrorsRegister.Incr(1)
 	})
+	if err := logger.SetLogLevel(config.LogLevel); err != nil {
+		logger.Error(err)
+	}
 	SetLoggerOnPlugin(output, logger)
 
 	if config.MetricBufferLimit > 0 {
@@ -99,7 +104,7 @@ func NewRunningOutput(
 		batchSize = DefaultMetricBatchSize
 	}
 
-	b, err := NewBuffer(config.Name, config.Alias, bufferLimit, config.BufferStrategy, config.BufferDirectory)
+	b, err := NewBuffer(config.Name, config.ID, config.Alias, bufferLimit, config.BufferStrategy, config.BufferDirectory)
 	if err != nil {
 		panic(err)
 	}
@@ -199,11 +204,29 @@ func (r *RunningOutput) Close() {
 	if err := r.Output.Close(); err != nil {
 		r.log.Errorf("Error closing output: %v", err)
 	}
+
+	if err := r.buffer.Close(); err != nil {
+		r.log.Errorf("Error closing output buffer: %v", err)
+	}
 }
 
 // AddMetric adds a metric to the output.
-// Takes ownership of metric
+// The given metric will be copied if the output selects the metric.
 func (r *RunningOutput) AddMetric(metric telegraf.Metric) {
+	ok, err := r.Config.Filter.Select(metric)
+	if err != nil {
+		r.log.Errorf("filtering failed: %v", err)
+	} else if !ok {
+		r.MetricsFiltered.Incr(1)
+		return
+	}
+
+	r.add(metric.Copy())
+}
+
+// AddMetricNoCopy adds a metric to the output.
+// Takes ownership of metric regardless of whether the output selects it for outputting.
+func (r *RunningOutput) AddMetricNoCopy(metric telegraf.Metric) {
 	ok, err := r.Config.Filter.Select(metric)
 	if err != nil {
 		r.log.Errorf("filtering failed: %v", err)
@@ -212,6 +235,10 @@ func (r *RunningOutput) AddMetric(metric telegraf.Metric) {
 		return
 	}
 
+	r.add(metric)
+}
+
+func (r *RunningOutput) add(metric telegraf.Metric) {
 	r.Config.Filter.Modify(metric)
 	if len(metric.FieldList()) == 0 {
 		r.metricFiltered(metric)
@@ -347,7 +374,11 @@ func (r *RunningOutput) writeMetrics(metrics []telegraf.Metric) error {
 
 func (r *RunningOutput) LogBufferStatus() {
 	nBuffer := r.buffer.Len()
-	r.log.Debugf("Buffer fullness: %d / %d metrics", nBuffer, r.MetricBufferLimit)
+	if r.Config.BufferStrategy == "disk" {
+		r.log.Debugf("Buffer fullness: %d metrics", nBuffer)
+	} else {
+		r.log.Debugf("Buffer fullness: %d / %d metrics", nBuffer, r.MetricBufferLimit)
+	}
 }
 
 func (r *RunningOutput) Log() telegraf.Logger {

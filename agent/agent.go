@@ -106,6 +106,11 @@ func (a *Agent) Run(ctx context.Context) error {
 		time.Duration(a.Config.Agent.Interval), a.Config.Agent.Quiet,
 		a.Config.Agent.Hostname, time.Duration(a.Config.Agent.FlushInterval))
 
+	log.Printf("D! [agent] Initializing plugins")
+	if err := a.InitPlugins(); err != nil {
+		return err
+	}
+
 	if a.Config.Persister != nil {
 		log.Printf("D! [agent] Initializing plugin states")
 		if err := a.initPersister(); err != nil {
@@ -117,11 +122,6 @@ func (a *Agent) Run(ctx context.Context) error {
 			}
 			log.Print("I! [agent] State file does not exist... Skip restoring states...")
 		}
-	}
-
-	log.Printf("D! [agent] Initializing plugins")
-	if err := a.initPlugins(); err != nil {
-		return err
 	}
 
 	startTime := time.Now()
@@ -207,8 +207,8 @@ func (a *Agent) Run(ctx context.Context) error {
 	return err
 }
 
-// initPlugins runs the Init function on plugins.
-func (a *Agent) initPlugins() error {
+// InitPlugins runs the Init function on plugins.
+func (a *Agent) InitPlugins() error {
 	for _, input := range a.Config.Inputs {
 		// Share the snmp translator setting with plugins that need it.
 		if tp, ok := input.Input.(snmp.TranslatorPlugin); ok {
@@ -750,7 +750,7 @@ func updateWindow(start time.Time, roundInterval bool, period time.Duration) (ti
 	var until time.Time
 	if roundInterval {
 		until = internal.AlignTime(start, period)
-		if until == start {
+		if until.Equal(start) {
 			until = internal.AlignTime(start.Add(time.Nanosecond), period)
 		}
 	} else {
@@ -873,10 +873,10 @@ func (a *Agent) runOutputs(
 
 	for metric := range unit.src {
 		for i, output := range unit.outputs {
-			if i == len(a.Config.Outputs)-1 {
-				output.AddMetric(metric)
+			if i == len(unit.outputs)-1 {
+				output.AddMetricNoCopy(metric)
 			} else {
-				output.AddMetric(metric.Copy())
+				output.AddMetric(metric)
 			}
 		}
 	}
@@ -1003,8 +1003,7 @@ func (a *Agent) Test(ctx context.Context, wait time.Duration) error {
 // inputs to run.
 func (a *Agent) runTest(ctx context.Context, wait time.Duration, outputC chan<- telegraf.Metric) error {
 	log.Printf("D! [agent] Initializing plugins")
-	err := a.initPlugins()
-	if err != nil {
+	if err := a.InitPlugins(); err != nil {
 		return err
 	}
 
@@ -1017,6 +1016,7 @@ func (a *Agent) runTest(ctx context.Context, wait time.Duration, outputC chan<- 
 	if len(a.Config.Aggregators) != 0 {
 		procC := next
 		if len(a.Config.AggProcessors) != 0 && !a.Config.Agent.SkipProcessorsAfterAggregators {
+			var err error
 			procC, apu, err = a.startProcessors(next, a.Config.AggProcessors)
 			if err != nil {
 				return err
@@ -1028,6 +1028,7 @@ func (a *Agent) runTest(ctx context.Context, wait time.Duration, outputC chan<- 
 
 	var pu []*processorUnit
 	if len(a.Config.Processors) != 0 {
+		var err error
 		next, pu, err = a.startProcessors(next, a.Config.Processors)
 		if err != nil {
 			return err
@@ -1098,8 +1099,7 @@ func (a *Agent) Once(ctx context.Context, wait time.Duration) error {
 // inputs to run.
 func (a *Agent) runOnce(ctx context.Context, wait time.Duration) error {
 	log.Printf("D! [agent] Initializing plugins")
-	err := a.initPlugins()
-	if err != nil {
+	if err := a.InitPlugins(); err != nil {
 		return err
 	}
 

@@ -40,6 +40,10 @@ type Kernel struct {
 	procfs          procfs.FS
 }
 
+func (*Kernel) SampleConfig() string {
+	return sampleConfig
+}
+
 func (k *Kernel) Init() error {
 	k.optCollect = make(map[string]bool, len(k.ConfigCollect))
 	for _, v := range k.ConfigCollect {
@@ -61,10 +65,6 @@ func (k *Kernel) Init() error {
 		}
 	}
 	return nil
-}
-
-func (*Kernel) SampleConfig() string {
-	return sampleConfig
 }
 
 func (k *Kernel) Gather(acc telegraf.Accumulator) error {
@@ -155,7 +155,7 @@ func (k *Kernel) Gather(acc telegraf.Accumulator) error {
 			fields["ksm_"+f] = m
 		}
 	}
-	acc.AddCounter("kernel", fields, map[string]string{})
+	acc.AddCounter("kernel", fields, make(map[string]string))
 
 	if k.optCollect["psi"] {
 		if err := k.gatherPressure(acc); err != nil {

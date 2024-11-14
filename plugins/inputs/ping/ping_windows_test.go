@@ -104,7 +104,7 @@ Statystyka badania ping dla 195.187.242.157:
 `
 
 func mockErrorHostPinger(string, float64, ...string) (string, error) {
-	return errorPingOutput, errors.New("No packets received")
+	return errorPingOutput, errors.New("no packets received")
 }
 
 // Test that Gather works on a ping with no transmitted packets, even though the
@@ -228,7 +228,7 @@ Options:
 `
 
 func mockFatalHostPinger(string, float64, ...string) (string, error) {
-	return fatalPingOutput, errors.New("So very bad")
+	return fatalPingOutput, errors.New("so very bad")
 }
 
 // Test that a fatal ping command does not gather any statistics.
@@ -273,10 +273,10 @@ Ping statistics for 8.8.8.8:
 `
 
 func mockUnreachableHostPinger(string, float64, ...string) (string, error) {
-	return UnreachablePingOutput, errors.New("So very bad")
+	return UnreachablePingOutput, errors.New("so very bad")
 }
 
-//Reply from 185.28.251.217: TTL expired in transit.
+// Reply from 185.28.251.217: TTL expired in transit.
 
 // in case 'Destination net unreachable' ping app return receive packet which is not what we need
 // it's not contain valid metric so treat it as lost one
@@ -324,7 +324,7 @@ Ping statistics for 8.8.8.8:
 `
 
 func mockTTLExpiredPinger(string, float64, ...string) (string, error) {
-	return TTLExpiredPingOutput, errors.New("So very bad")
+	return TTLExpiredPingOutput, errors.New("so very bad")
 }
 
 // in case 'Destination net unreachable' ping app return receive packet which is not what we need

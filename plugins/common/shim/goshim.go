@@ -79,17 +79,17 @@ func (s *Shim) Run(pollInterval time.Duration) error {
 	if s.Input != nil {
 		err := s.RunInput(pollInterval)
 		if err != nil {
-			return fmt.Errorf("RunInput error: %w", err)
+			return fmt.Errorf("running input failed: %w", err)
 		}
 	} else if s.Processor != nil {
 		err := s.RunProcessor()
 		if err != nil {
-			return fmt.Errorf("RunProcessor error: %w", err)
+			return fmt.Errorf("running processor failed: %w", err)
 		}
 	} else if s.Output != nil {
 		err := s.RunOutput()
 		if err != nil {
-			return fmt.Errorf("RunOutput error: %w", err)
+			return fmt.Errorf("running output failed: %w", err)
 		}
 	} else {
 		return errors.New("nothing to run")
@@ -115,13 +115,16 @@ func (s *Shim) writeProcessedMetrics() error {
 			}
 			b, err := serializer.Serialize(m)
 			if err != nil {
+				m.Reject()
 				return fmt.Errorf("failed to serialize metric: %w", err)
 			}
 			// Write this to stdout
 			_, err = fmt.Fprint(s.stdout, string(b))
 			if err != nil {
+				m.Drop()
 				return fmt.Errorf("failed to write metric: %w", err)
 			}
+			m.Accept()
 		}
 	}
 }

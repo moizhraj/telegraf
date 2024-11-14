@@ -163,9 +163,10 @@ func getCmmdsMap(ctx context.Context, client *vim25.Client, clusterObj *object.C
 	queries := []types.HostVsanInternalSystemCmmdsQuery{
 		{Type: "HOSTNAME"},
 		{Type: "DISK"},
+		{Type: "DISK_CAPACITY_TIER"},
 	}
 
-	//Some esx host can be down or in maintenance mode. Hence cmmds query might fail on such hosts.
+	// Some esx host can be down or in maintenance mode. Hence cmmds query might fail on such hosts.
 	// We iterate until be get proper api response
 	var resp *types.QueryCmmdsResponse
 	for _, host := range hosts {
@@ -292,7 +293,7 @@ func (e *Endpoint) queryPerformance(ctx context.Context, vsanClient *soap.Client
 			}
 			if len(timeStamps) > 0 {
 				lastSample := timeStamps[len(timeStamps)-1]
-				if lastSample != (time.Time{}) && lastSample.After(latest) {
+				if !lastSample.IsZero() && lastSample.After(latest) {
 					latest = lastSample
 				}
 			}
@@ -387,7 +388,7 @@ func (e *Endpoint) queryResyncSummary(ctx context.Context, vsanClient *soap.Clie
 	includeSummary := true
 	request := vsantypes.VsanQuerySyncingVsanObjects{
 		This:           vsanSystemEx,
-		Uuids:          []string{}, // We only need summary information.
+		Uuids:          make([]string, 0), // We only need summary information.
 		Start:          0,
 		IncludeSummary: &includeSummary,
 	}
@@ -421,7 +422,7 @@ func populateClusterTags(tags map[string]string, clusterRef *objectRef, vcenter 
 }
 
 // populateCMMDSTags takes in a tag map, makes a copy, adds more tags using a cmmds map and returns the copy.
-func populateCMMDSTags(tags map[string]string, entityName string, uuid string, cmmds map[string]CmmdsEntity) map[string]string {
+func populateCMMDSTags(tags map[string]string, entityName, uuid string, cmmds map[string]CmmdsEntity) map[string]string {
 	newTags := make(map[string]string)
 	// deep copy
 	for k, v := range tags {
@@ -440,8 +441,11 @@ func populateCMMDSTags(tags map[string]string, entityName string, uuid string, c
 				newTags["hostname"] = host.Content.Hostname
 			}
 			newTags["devicename"] = e.Content.DevName
-			if int(e.Content.IsSsd) == 0 {
-				newTags["ssduuid"] = e.Content.SsdUUID
+			// Skip adding ssduuid tag for VSAN ESA disks as this property is not returned in the CMMDS data
+			if !(strings.Contains(entityName, "-esa-")) {
+				if int(e.Content.IsSsd) == 0 {
+					newTags["ssduuid"] = e.Content.SsdUUID
+				}
 			}
 		}
 	case strings.Contains(entityName, "host-memory-"):
@@ -494,7 +498,7 @@ func populateCMMDSTags(tags map[string]string, entityName string, uuid string, c
 }
 
 // versionLowerThan returns true is the current version < a base version
-func versionLowerThan(current string, major int, minor int) bool {
+func versionLowerThan(current string, major, minor int) bool {
 	version := strings.Split(current, ".")
 	currentMajor, err := strconv.Atoi(version[0])
 	if err != nil {
